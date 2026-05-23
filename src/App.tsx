@@ -29,18 +29,18 @@ function App() {
 
   return (
     <div className="container">
-      <h1 className="title">AI 智能语音输入助手</h1>
+      <h1 className="title">AI 智能语音输入</h1>
       <div className="mode-label">{currentMode}</div>
 
       <div className={`status-icon ${recording ? 'recording' : 'idle'}`}>
-        {recording ? <Square size={32} color="#ff4444" /> : <Mic size={32} />}
+        {recording ? <Square size={28} /> : <Mic size={28} />}
       </div>
 
       <p className="status-text">
-        {recording ? '录音中... 再次按下快捷键停止' : '就绪'}
+        {recording ? '录音中 · 再次按下停止' : '按快捷键开始语音输入'}
       </p>
       <p className="shortcut-hint">
-        按下 <span className="shortcut-key">Ctrl</span> + <span className="shortcut-key">Space</span> 开始语音输入
+        <span className="shortcut-key">Alt</span> + <span className="shortcut-key">V</span>
       </p>
 
       {lastText && (
@@ -51,15 +51,15 @@ function App() {
 
       <div className="nav-bar">
         <button className="nav-btn" onClick={() => setPage('home')}>
-          <Mic />
+          <Mic size={18} />
           <span>首页</span>
         </button>
         <button className="nav-btn" onClick={() => setPage('history')}>
-          <History />
+          <History size={18} />
           <span>历史</span>
         </button>
         <button className="nav-btn" onClick={() => setPage('settings')}>
-          <SettingsIcon />
+          <SettingsIcon size={18} />
           <span>设置</span>
         </button>
       </div>

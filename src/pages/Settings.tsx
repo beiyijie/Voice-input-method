@@ -15,7 +15,7 @@ function Settings({ onBack }: { onBack: () => void }) {
   const [currentMode, setCurrentMode] = useState('general')
   const [language, setLanguage] = useState('zh')
   const [aiCorrect, setAiCorrect] = useState(true)
-  const [shortcutKey, setShortcutKey] = useState('Ctrl+Space')
+  const [shortcutKey, setShortcutKey] = useState('Alt+V')
 
   useEffect(() => {
     loadWords()
@@ -67,140 +67,123 @@ function Settings({ onBack }: { onBack: () => void }) {
   }
 
   return (
-    <div style={{ padding: 24, height: '100vh', display: 'flex', flexDirection: 'column' }}>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 24 }}>
-        <button onClick={onBack} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#fff' }}>
-          <ArrowLeft size={24} />
+    <div className="page">
+      <div className="page-header">
+        <button className="page-back" onClick={onBack}>
+          <ArrowLeft size={20} />
         </button>
-        <h2 style={{ margin: 0, fontSize: 20 }}>设置</h2>
+        <h2 className="page-title">设置</h2>
       </div>
 
       {/* Input Mode */}
-      <div style={{ marginBottom: 20 }}>
-        <h3 style={{ fontSize: 14, marginBottom: 8, opacity: 0.8 }}>输入模式</h3>
-        <div style={{ display: 'flex', gap: 8 }}>
-          {[
-            { id: 'general', label: '通用模式' },
-            { id: 'office', label: '办公模式' },
-            { id: 'programmer', label: '程序员模式' },
-          ].map((mode) => (
-            <button
-              key={mode.id}
-              onClick={() => handleModeChange(mode.id)}
-              style={{
-                flex: 1, padding: '10px', borderRadius: 8, border: 'none', cursor: 'pointer',
-                background: currentMode === mode.id ? 'rgba(255,255,255,0.25)' : 'rgba(255,255,255,0.08)',
-                color: '#fff', fontSize: 13, fontWeight: currentMode === mode.id ? 600 : 400,
-              }}
-            >
-              {mode.label}
-            </button>
-          ))}
+      <div className="setting-section">
+        <div className="setting-label">输入模式</div>
+        <div className="setting-card">
+          <div className="chip-group">
+            {[
+              { id: 'general', label: '通用' },
+              { id: 'office', label: '办公' },
+              { id: 'programmer', label: '编程' },
+            ].map((mode) => (
+              <button
+                key={mode.id}
+                className={`chip ${currentMode === mode.id ? 'active' : ''}`}
+                onClick={() => handleModeChange(mode.id)}
+              >
+                {mode.label}
+              </button>
+            ))}
+          </div>
         </div>
       </div>
 
       {/* Language */}
-      <div style={{ marginBottom: 20 }}>
-        <h3 style={{ fontSize: 14, marginBottom: 8, opacity: 0.8 }}>识别语言</h3>
-        <div style={{ display: 'flex', gap: 8 }}>
-          {[
-            { id: 'zh', label: '普通话' },
-            { id: 'en', label: '英语' },
-            { id: 'yue', label: '粤语' },
-          ].map((lang) => (
-            <button
-              key={lang.id}
-              onClick={() => handleLanguageChange(lang.id)}
-              style={{
-                padding: '8px 16px', borderRadius: 8, border: 'none', cursor: 'pointer',
-                background: language === lang.id ? 'rgba(255,255,255,0.25)' : 'rgba(255,255,255,0.08)',
-                color: '#fff', fontSize: 13,
-              }}
-            >
-              {lang.label}
-            </button>
-          ))}
+      <div className="setting-section">
+        <div className="setting-label">识别语言</div>
+        <div className="setting-card">
+          <div className="chip-group">
+            {[
+              { id: 'zh', label: '普通话' },
+              { id: 'en', label: 'English' },
+              { id: 'yue', label: '粤语' },
+            ].map((lang) => (
+              <button
+                key={lang.id}
+                className={`chip ${language === lang.id ? 'active' : ''}`}
+                onClick={() => handleLanguageChange(lang.id)}
+              >
+                {lang.label}
+              </button>
+            ))}
+          </div>
         </div>
       </div>
 
-      {/* AI Correction Toggle */}
-      <div style={{ marginBottom: 20, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-        <h3 style={{ fontSize: 14, opacity: 0.8 }}>AI 智能纠错</h3>
-        <button
-          onClick={handleAiToggle}
-          style={{
-            width: 44, height: 24, borderRadius: 12, border: 'none', cursor: 'pointer',
-            background: aiCorrect ? '#4caf50' : 'rgba(255,255,255,0.2)',
-            position: 'relative', transition: 'background 0.2s',
-          }}
-        >
-          <div style={{
-            width: 18, height: 18, borderRadius: '50%', background: '#fff',
-            position: 'absolute', top: 3, left: aiCorrect ? 23 : 3,
-            transition: 'left 0.2s',
-          }} />
-        </button>
+      {/* AI Correction */}
+      <div className="setting-section">
+        <div className="setting-card">
+          <div className="toggle-row">
+            <span className="toggle-label">AI 智能纠错</span>
+            <button
+              className={`toggle-track ${aiCorrect ? 'on' : 'off'}`}
+              onClick={handleAiToggle}
+            >
+              <div className="toggle-thumb" />
+            </button>
+          </div>
+        </div>
       </div>
 
-      {/* Shortcut info */}
-      <div style={{ marginBottom: 20, padding: '10px 14px', background: 'rgba(255,255,255,0.08)', borderRadius: 8 }}>
-        <div style={{ fontSize: 14, opacity: 0.8, marginBottom: 4 }}>全局快捷键</div>
-        <div style={{ fontSize: 13, opacity: 0.5 }}>{shortcutKey}</div>
+      {/* Shortcut */}
+      <div className="setting-section">
+        <div className="setting-label">全局快捷键</div>
+        <div className="setting-card">
+          <div className="shortcut-display">
+            <span className="shortcut-key-display">{shortcutKey}</span>
+          </div>
+        </div>
       </div>
 
       {/* Hotwords */}
-      <div style={{ marginBottom: 12 }}>
-        <h3 style={{ fontSize: 14, opacity: 0.8 }}>热词管理</h3>
-      </div>
-      <div style={{ marginBottom: 16, display: 'flex', gap: 8 }}>
-        <input
-          placeholder="输入热词..."
-          value={newWord}
-          onChange={(e) => setNewWord(e.target.value)}
-          onKeyDown={(e) => e.key === 'Enter' && handleAdd()}
-          style={{
-            flex: 1, padding: '8px 12px', borderRadius: 8, border: '1px solid rgba(255,255,255,0.3)',
-            background: 'rgba(255,255,255,0.1)', color: '#fff', fontSize: 14, outline: 'none',
-          }}
-        />
-        <input
-          placeholder="分类"
-          value={category}
-          onChange={(e) => setCategory(e.target.value)}
-          style={{
-            width: 80, padding: '8px 12px', borderRadius: 8, border: '1px solid rgba(255,255,255,0.3)',
-            background: 'rgba(255,255,255,0.1)', color: '#fff', fontSize: 14, outline: 'none',
-          }}
-        />
-        <button onClick={handleAdd} style={{
-          padding: '8px 16px', borderRadius: 8, border: 'none', background: 'rgba(255,255,255,0.2)',
-          color: '#fff', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 4,
-        }}>
-          <Plus size={18} /> 添加
-        </button>
+      <div className="setting-section">
+        <div className="setting-label">热词</div>
+        <div className="input-row">
+          <input
+            className="input-field"
+            placeholder="输入热词..."
+            value={newWord}
+            onChange={(e) => setNewWord(e.target.value)}
+            onKeyDown={(e) => e.key === 'Enter' && handleAdd()}
+          />
+          <input
+            className="input-field"
+            style={{ width: 80, flex: 'none' }}
+            placeholder="分类"
+            value={category}
+            onChange={(e) => setCategory(e.target.value)}
+          />
+          <button className="btn-primary" onClick={handleAdd}>
+            <Plus size={16} /> 添加
+          </button>
+        </div>
       </div>
 
-      <div style={{ flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 6 }}>
+      <div className="word-list">
         {words.map((w) => (
-          <div key={w.id} style={{
-            display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-            padding: '8px 14px', background: 'rgba(255,255,255,0.06)', borderRadius: 8,
-          }}>
+          <div key={w.id} className="word-item">
             <div>
-              <span style={{ fontSize: 14 }}>{w.word}</span>
+              <span className="word-text">{w.word}</span>
               {w.category && (
-                <span style={{ marginLeft: 8, fontSize: 11, padding: '2px 6px', borderRadius: 4, background: 'rgba(255,255,255,0.1)' }}>
-                  {w.category}
-                </span>
+                <span className="word-category">{w.category}</span>
               )}
             </div>
-            <button onClick={() => handleDelete(w.id)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#ff6b6b', padding: 4 }}>
-              <Trash2 size={16} />
+            <button className="word-delete" onClick={() => handleDelete(w.id)}>
+              <Trash2 size={14} />
             </button>
           </div>
         ))}
         {words.length === 0 && (
-          <p style={{ textAlign: 'center', opacity: 0.4, fontSize: 13, marginTop: 16 }}>暂无热词，添加后可提高识别准确率</p>
+          <p className="empty-state">暂无热词，添加后可提高识别准确率</p>
         )}
       </div>
     </div>
