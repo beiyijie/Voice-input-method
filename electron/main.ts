@@ -125,6 +125,11 @@ app.whenReady().then(async () => {
   })
   ipcMain.handle('set-config', async (_event, key: string, value: string) => {
     await setConfig(key, value)
+    // If shortcut key changed, re-register
+    if (key === 'shortcut_key') {
+      globalShortcut.unregisterAll()
+      globalShortcut.register(value, handleRecordingToggle)
+    }
   })
   ipcMain.handle('get-history', async (_event, limit?: number, offset?: number) => {
     return await getHistory(limit, offset)
