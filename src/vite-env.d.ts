@@ -7,6 +7,7 @@ interface ElectronAPI {
   searchHistory: (keyword: string) => Promise<unknown>
   onRecordingState: (callback: (recording: boolean) => void) => void
   onRecognitionResult: (callback: (result: { text: string }) => void) => void
+  onSubtitleUpdate: (callback: (result: { text: string }) => void) => void
 }
 
 interface Window {

@@ -11,4 +11,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
   onRecognitionResult: (callback: (result: { text: string }) => void) => {
     ipcRenderer.on('recognition-result', (_event, result) => callback(result))
   },
+  onSubtitleUpdate: (callback: (result: { text: string }) => void) => {
+    ipcRenderer.on('subtitle-update', (_event, result) => callback(result))
+  },
 })

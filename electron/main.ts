@@ -3,6 +3,7 @@ import path from 'path'
 import { initDatabase, closeDatabase, getConfig, setConfig, getHistory, searchHistory, insertHistory, getWords } from './database'
 import { PythonBridge } from './python-bridge'
 import { typeText } from './auto-type'
+import { showSubtitle, hideSubtitle } from './subtitle-window'
 
 let mainWindow: BrowserWindow | null = null
 let pythonBridge: PythonBridge | null = null
@@ -43,6 +44,7 @@ async function handleRecordingToggle() {
     const words = await getWords()
     const hotwords = words.map(w => w.word)
     pythonBridge.startRecording('zh', hotwords)
+    showSubtitle('')
     isRecording = true
     mainWindow.webContents.send('recording-state', true)
   }
@@ -85,8 +87,13 @@ app.whenReady().then(async () => {
       typeText(text)
     }
 
+    hideSubtitle()
     mainWindow?.webContents.send('recognition-result', { text })
     mainWindow?.webContents.send('recording-state', false)
+  })
+
+  pythonBridge.on('partial_result', (msg) => {
+    showSubtitle(msg.text || '')
   })
 
   // IPC handlers

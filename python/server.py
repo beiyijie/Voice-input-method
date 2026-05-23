@@ -2,6 +2,7 @@
 import asyncio
 import json
 import os
+import time
 import numpy as np
 import sounddevice as sd
 import websockets
@@ -50,6 +51,7 @@ async def handle_client(websocket):
             )
 
             with stream:
+                last_partial_time = time.time()
                 while _recording:
                     await asyncio.sleep(0.1)
                     if len(_audio_buffer) > 0:
@@ -58,6 +60,16 @@ async def handle_client(websocket):
                         if should_stop:
                             _recording = False
                             break
+
+                    # Every ~1 second, send partial recognition result
+                    now = time.time()
+                    if len(_audio_buffer) > 0 and now - last_partial_time > 1.0:
+                        last_partial_time = now
+                        partial_audio = b"".join(_audio_buffer)
+                        loop = asyncio.get_event_loop()
+                        partial_text = await loop.run_in_executor(None, recognize, partial_audio, hotwords)
+                        if partial_text:
+                            await send({"type": "partial_result", "text": partial_text})
 
             # 录音结束，进行识别
             if _audio_buffer:
