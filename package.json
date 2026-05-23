@@ -10,14 +10,13 @@
     "electron:dev": "concurrently \"vite\" \"wait-on http://localhost:5173 && electron .\"",
     "electron:build": "npm run build && electron-builder"
   },
+  "author": "beiyijie",
   "dependencies": {
-    "bufferutil": "^4.1.0",
     "lucide-react": "^1.16.0",
     "mysql2": "^3.22.3",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
     "react-router-dom": "^7.15.1",
-    "utf-8-validate": "^6.0.6",
     "ws": "^8.21.0"
   },
   "devDependencies": {
@@ -35,5 +34,9 @@
     "vite-plugin-electron": "^0.28.0",
     "vite-plugin-electron-renderer": "^0.14.0",
     "wait-on": "^8.0.0"
+  },
+  "optionalDependencies": {
+    "bufferutil": "^4.1.0",
+    "utf-8-validate": "^6.0.6"
   }
 }

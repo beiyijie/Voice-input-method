@@ -22,15 +22,15 @@ win:
     - target: nsis
       arch:
         - x64
-  icon: resources/icon.png
+  icon: resources/icon.ico
 nsis:
   oneClick: false
   allowToChangeInstallationDirectory: true
   createDesktopShortcut: true
   createStartMenuShortcut: true
   shortcutName: 语音输入助手
-  installerIcon: resources/icon.png
-  uninstallerIcon: resources/icon.png
-  installerHeaderIcon: resources/icon.png
+  installerIcon: resources/icon.ico
+  uninstallerIcon: resources/icon.ico
+  installerHeaderIcon: resources/icon.ico
   deleteAppDataOnUninstall: false
   displayLanguageSelector: false
