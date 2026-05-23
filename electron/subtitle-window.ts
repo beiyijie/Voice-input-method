@@ -9,7 +9,7 @@ export function showSubtitle(text: string): void {
   }
 
   subtitleWindow.webContents.send('subtitle-update', { text })
-  subtitleWindow.show()
+  subtitleWindow.showInactive()
 }
 
 export function hideSubtitle(): void {

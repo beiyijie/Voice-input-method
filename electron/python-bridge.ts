@@ -11,10 +11,12 @@ export class PythonBridge {
   private ready = false
   private restartCount = 0
   private maxRestarts = 3
+  private shouldRestart = true
 
   async start(): Promise<void> {
     const pythonPath = process.env.PYTHON_PATH || 'python'
-    const scriptPath = path.join(__dirname, '../../python/server.py')
+    const scriptPath = path.resolve(__dirname, '../python/server.py')
+    console.log('[Bridge] Starting Python:', scriptPath)
 
     this.process = spawn(pythonPath, [scriptPath], {
       stdio: ['pipe', 'pipe', 'pipe'],
@@ -33,28 +35,73 @@ export class PythonBridge {
       this.ws?.close()
       this.ws = null
       this.ready = false
-      if (this.restartCount < this.maxRestarts) {
+      if (this.shouldRestart && this.restartCount < this.maxRestarts) {
         this.restartCount++
         setTimeout(() => this.start(), 1000)
       }
     })
 
-    // Wait for Python to start
-    await new Promise<void>((resolve) => setTimeout(resolve, 2000))
+    // Retry WebSocket connection until Python is ready
+    await this.connectWithRetry()
+  }
 
-    this.ws = new WebSocket('ws://127.0.0.1:9877')
+  private async connectWithRetry(maxAttempts = 30): Promise<void> {
+    for (let i = 0; i < maxAttempts; i++) {
+      if (!this.process || this.process.killed) break
 
-    this.ws.on('open', () => {
-      console.log('[WS] connected to Python')
-    })
+      try {
+        await new Promise<void>((resolve, reject) => {
+          const ws = new WebSocket('ws://127.0.0.1:9877')
+          const timeout = setTimeout(() => {
+            ws.close()
+            reject(new Error('connection timeout'))
+          }, 2000)
 
-    this.ws.on('message', (data: WebSocket.Data) => {
+          ws.on('open', () => {
+            clearTimeout(timeout)
+            console.log('[Bridge] WebSocket connected')
+            this.ws = ws
+            this.setupWsHandlers(ws)
+            resolve()
+          })
+
+          ws.on('error', (err) => {
+            clearTimeout(timeout)
+            ws.close()
+            reject(err)
+          })
+        })
+
+        // Wait for 'ready' message from Python
+        await new Promise<void>((resolve, reject) => {
+          const timeout = setTimeout(() => reject(new Error('ready timeout')), 8000)
+          const handler = (msg: any) => {
+            if (msg.type === 'ready') {
+              this.off('ready', handler)
+              clearTimeout(timeout)
+              this.ready = true
+              this.restartCount = 0
+              resolve()
+            }
+          }
+          this.on('ready', handler)
+        })
+
+        console.log('[Bridge] Python ready')
+        return
+      } catch {
+        // Retry after short delay
+        await new Promise((r) => setTimeout(r, 1000))
+      }
+    }
+
+    throw new Error('Python not ready within retry limit')
+  }
+
+  private setupWsHandlers(ws: WebSocket): void {
+    ws.on('message', (data: WebSocket.Data) => {
       try {
         const msg = JSON.parse(data.toString())
-        if (msg.type === 'ready') {
-          this.ready = true
-          this.restartCount = 0
-        }
         const handlers = this.handlers.get(msg.type) || []
         handlers.forEach((h) => h(msg))
       } catch (err) {
@@ -62,17 +109,14 @@ export class PythonBridge {
       }
     })
 
-    this.ws.on('error', (err) => {
+    ws.on('error', (err) => {
       console.error('[WS] error:', err.message)
     })
 
-    // Wait for ready signal
-    await new Promise<void>((resolve, reject) => {
-      const timeout = setTimeout(() => reject(new Error('Python not ready within 10s')), 10000)
-      this.on('ready', () => {
-        clearTimeout(timeout)
-        resolve()
-      })
+    ws.on('close', () => {
+      console.log('[WS] disconnected')
+      this.ws = null
+      this.ready = false
     })
   }
 
@@ -80,6 +124,11 @@ export class PythonBridge {
     const handlers = this.handlers.get(type) || []
     handlers.push(handler)
     this.handlers.set(type, handlers)
+  }
+
+  off(type: string, handler: MessageHandler): void {
+    const handlers = this.handlers.get(type) || []
+    this.handlers.set(type, handlers.filter(h => h !== handler))
   }
 
   send(msg: Record<string, any>): void {
@@ -101,6 +150,7 @@ export class PythonBridge {
   }
 
   async shutdown(): Promise<void> {
+    this.shouldRestart = false
     this.send({ type: 'shutdown' })
     await new Promise((resolve) => setTimeout(resolve, 500))
     if (this.process) {

@@ -13,6 +13,7 @@ let pythonBridge: PythonBridge | null = null
 let isRecording = false
 let recordingStartTime = 0
 let currentMode = 'general'
+let lastTypedText = ''
 
 function createWindow() {
   mainWindow = new BrowserWindow({
@@ -44,6 +45,7 @@ async function handleRecordingToggle() {
   if (isRecording) {
     pythonBridge.stopRecording()
   } else {
+    lastTypedText = ''
     recordingStartTime = Date.now()
     const mode = getModeConfig(currentMode)
     const userWords = await getWords()
@@ -74,7 +76,7 @@ app.whenReady().then(async () => {
   }
 
   // Register global shortcut
-  const shortcutKey = 'Ctrl+Space'
+  const shortcutKey = 'Alt+V'
   const registered = globalShortcut.register(shortcutKey, handleRecordingToggle)
   if (!registered) {
     console.error(`Failed to register shortcut: ${shortcutKey}`)
@@ -105,17 +107,19 @@ app.whenReady().then(async () => {
         console.error('AI correction failed:', err)
       }
 
-      // Save to history (with corrected text if available)
+      // Type final text into the target app via clipboard paste
+      const finalText = corrected || text
+      await typeText(finalText)
+      lastTypedText = ''
+
+      // Save to history
       await insertHistory(text, corrected, duration, 'zh', currentMode)
 
-      // Send both results to renderer
+      // Send results to renderer
       mainWindow?.webContents.send('recognition-result', { text })
       if (corrected) {
         mainWindow?.webContents.send('corrected-text', { text: corrected })
       }
-
-      // Auto-type the corrected text (or original if correction failed)
-      typeText(corrected || text)
     }
 
     hideSubtitle()

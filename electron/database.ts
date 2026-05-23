@@ -25,10 +25,10 @@ export interface SystemConfig {
 }
 
 const DB_CONFIG = {
-  host: '127.0.0.1',
+  host: '8.152.220.158',
   port: 3306,
   user: 'root',
-  password: 'root',
+  password: 'Byj2005*',
   database: 'voice_input',
   waitForConnections: true,
   connectionLimit: 5,
@@ -63,7 +63,7 @@ CREATE TABLE IF NOT EXISTS system_config (
 ) COMMENT='系统配置';
 
 INSERT IGNORE INTO system_config (config_key, config_value) VALUES
-('shortcut_key', 'Ctrl+Space'),
+('shortcut_key', 'Alt+V'),
 ('language', 'zh'),
 ('mode', 'general');
 `
