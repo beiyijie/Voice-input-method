@@ -1,5 +1,6 @@
 import { app, BrowserWindow, ipcMain } from 'electron'
 import path from 'path'
+import { initDatabase, closeDatabase, getConfig, setConfig, getHistory, searchHistory } from './database'
 
 let mainWindow: BrowserWindow | null = null
 
@@ -27,19 +28,38 @@ function createWindow() {
   })
 }
 
-app.whenReady().then(() => {
-  // IPC handlers (to be implemented with database in PR2)
-  ipcMain.handle('get-config', (_event, key: string) => {
-    return null
+app.whenReady().then(async () => {
+  // Initialize database
+  try {
+    await initDatabase()
+    console.log('Database initialized successfully')
+  } catch (err) {
+    console.error('Database init failed:', err)
+  }
+
+  // IPC handlers
+  ipcMain.handle('get-config', async (_event, key: string) => {
+    try {
+      return await getConfig(key)
+    } catch {
+      return null
+    }
   })
-  ipcMain.handle('set-config', (_event, key: string, value: string) => {
-    console.log(`[config] ${key} = ${value}`)
+  ipcMain.handle('set-config', async (_event, key: string, value: string) => {
+    await setConfig(key, value)
+  })
+  ipcMain.handle('get-history', async (_event, limit?: number, offset?: number) => {
+    return await getHistory(limit, offset)
+  })
+  ipcMain.handle('search-history', async (_event, keyword: string) => {
+    return await searchHistory(keyword)
   })
 
   createWindow()
 })
 
-app.on('window-all-closed', () => {
+app.on('window-all-closed', async () => {
+  await closeDatabase()
   if (process.platform !== 'darwin') {
     app.quit()
   }
