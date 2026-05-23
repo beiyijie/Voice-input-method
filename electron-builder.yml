@@ -1,0 +1,13 @@
+appId: com.voiceinput.assistant
+productName: 语音输入助手
+directories:
+  output: release
+files:
+  - dist
+  - dist-electron
+win:
+  target: nsis
+  icon: resources/icon.png
+nsis:
+  oneClick: false
+  allowToChangeInstallationDirectory: true
