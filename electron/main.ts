@@ -138,11 +138,17 @@ app.whenReady().then(async () => {
     console.error('Python bridge failed:', err)
   }
 
-  // Register global shortcut
-  const shortcutKey = 'Alt+V'
-  const registered = globalShortcut.register(shortcutKey, handleRecordingToggle)
-  if (!registered) {
-    console.error(`Failed to register shortcut: ${shortcutKey}`)
+  // Register global shortcut (read from config)
+  try {
+    const savedKey = await getConfig('shortcut_key')
+    const shortcutKey = savedKey || 'Alt+V'
+    const registered = globalShortcut.register(shortcutKey, handleRecordingToggle)
+    if (!registered) {
+      console.error(`Failed to register shortcut: ${shortcutKey}`)
+    }
+  } catch (err) {
+    console.error('Failed to register shortcut:', err)
+    globalShortcut.register('Alt+V', handleRecordingToggle)
   }
 
   // Load user words cache & language

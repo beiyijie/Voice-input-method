@@ -16,6 +16,7 @@ function Settings({ onBack }: { onBack: () => void }) {
   const [language, setLanguage] = useState('zh')
   const [aiCorrect, setAiCorrect] = useState(true)
   const [shortcutKey, setShortcutKey] = useState('Alt+V')
+  const [listening, setListening] = useState(false)
 
   useEffect(() => {
     loadWords()
@@ -139,7 +140,38 @@ function Settings({ onBack }: { onBack: () => void }) {
         <div className="setting-label">全局快捷键</div>
         <div className="setting-card">
           <div className="shortcut-display">
-            <span className="shortcut-key-display">{shortcutKey}</span>
+            <span
+              className={`shortcut-key-display ${listening ? 'listening' : ''}`}
+              onClick={() => setListening(true)}
+              onBlur={() => setListening(false)}
+              onKeyDown={async (e) => {
+                e.preventDefault()
+                const parts: string[] = []
+                if (e.ctrlKey) parts.push('Ctrl')
+                if (e.altKey) parts.push('Alt')
+                if (e.shiftKey) parts.push('Shift')
+                if (e.metaKey) parts.push('Cmd')
+
+                const key = e.key
+                // Ignore modifier-only presses
+                if (['Control', 'Alt', 'Shift', 'Meta'].includes(key)) return
+
+                // Format regular key: uppercase single chars, pass through named keys
+                const keyName = key.length === 1 ? key.toUpperCase() : key
+                parts.push(keyName)
+                const combo = parts.join('+')
+
+                // Validate: must have at least one modifier
+                if (!e.ctrlKey && !e.altKey && !e.metaKey) return
+
+                setShortcutKey(combo)
+                await window.electronAPI.setConfig('shortcut_key', combo)
+                setListening(false)
+              }}
+              tabIndex={0}
+            >
+              {listening ? '按下快捷键...' : shortcutKey}
+            </span>
           </div>
         </div>
       </div>

@@ -404,6 +404,28 @@ body {
   font-size: 13px;
   color: rgba(255, 255, 255, 0.8);
   font-family: ui-monospace, 'SF Mono', Menlo, monospace;
+  cursor: pointer;
+  padding: 4px 10px;
+  border-radius: 6px;
+  border: 1px solid transparent;
+  transition: all 0.15s;
+  outline: none;
+}
+.shortcut-key-display:hover {
+  border-color: rgba(255, 255, 255, 0.15);
+  background: rgba(255, 255, 255, 0.04);
+}
+.shortcut-key-display:focus-visible {
+  border-color: rgba(255, 255, 255, 0.3);
+}
+.shortcut-key-display.listening {
+  border-color: rgba(99, 133, 255, 0.6);
+  background: rgba(99, 133, 255, 0.1);
+  animation: shortcut-pulse 1.5s ease-in-out infinite;
+}
+@keyframes shortcut-pulse {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(99, 133, 255, 0.2); }
+  50% { box-shadow: 0 0 0 4px rgba(99, 133, 255, 0.05); }
 }
 
 /* ─── Input ─── */
