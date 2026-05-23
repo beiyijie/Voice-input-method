@@ -4,6 +4,7 @@ import { initDatabase, closeDatabase, getConfig, setConfig, getHistory, searchHi
 import { PythonBridge } from './python-bridge'
 import { typeText } from './auto-type'
 import { correctText } from './ollama'
+import { parseCommand } from './commands'
 import { getModeConfig } from './modes'
 import { showSubtitle, hideSubtitle } from './subtitle-window'
 
@@ -86,6 +87,16 @@ app.whenReady().then(async () => {
     const text = msg.text || ''
 
     if (text.trim()) {
+      // Check for voice commands first
+      const parsed = parseCommand(text)
+      if (parsed) {
+        await parsed.command.execute(parsed.params)
+        mainWindow?.webContents.send('recognition-result', { text: `🎯 执行命令: ${text}` })
+        hideSubtitle()
+        mainWindow?.webContents.send('recording-state', false)
+        return
+      }
+
       // AI correction
       let corrected: string | null = null
       try {
