@@ -8,6 +8,7 @@ interface ElectronAPI {
   onRecordingState: (callback: (recording: boolean) => void) => void
   onRecognitionResult: (callback: (result: { text: string }) => void) => void
   onSubtitleUpdate: (callback: (result: { text: string }) => void) => void
+  onCorrectedText: (callback: (result: { text: string }) => void) => void
   getWords: () => Promise<Array<{ id: number; word: string; weight: number; category: string }>>
   addWord: (word: string, weight?: number, category?: string) => Promise<void>
   deleteWord: (id: number) => Promise<void>

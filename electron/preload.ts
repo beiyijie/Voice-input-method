@@ -14,6 +14,9 @@ contextBridge.exposeInMainWorld('electronAPI', {
   onSubtitleUpdate: (callback: (result: { text: string }) => void) => {
     ipcRenderer.on('subtitle-update', (_event, result) => callback(result))
   },
+  onCorrectedText: (callback: (result: { text: string }) => void) => {
+    ipcRenderer.on('corrected-text', (_event, result) => callback(result))
+  },
   getWords: () => ipcRenderer.invoke('get-words'),
   addWord: (word: string, weight?: number, category?: string) => ipcRenderer.invoke('add-word', word, weight, category),
   deleteWord: (id: number) => ipcRenderer.invoke('delete-word', id),

@@ -3,6 +3,7 @@ import path from 'path'
 import { initDatabase, closeDatabase, getConfig, setConfig, getHistory, searchHistory, insertHistory, getWords, addWord, deleteWord } from './database'
 import { PythonBridge } from './python-bridge'
 import { typeText } from './auto-type'
+import { correctText } from './ollama'
 import { showSubtitle, hideSubtitle } from './subtitle-window'
 
 let mainWindow: BrowserWindow | null = null
@@ -82,13 +83,28 @@ app.whenReady().then(async () => {
     const text = msg.text || ''
 
     if (text.trim()) {
-      await insertHistory(text, null, duration, 'zh', 'general')
-      // Auto-type the recognized text into the currently focused window
-      typeText(text)
+      // AI correction
+      let corrected: string | null = null
+      try {
+        corrected = await correctText(text)
+      } catch (err) {
+        console.error('AI correction failed:', err)
+      }
+
+      // Save to history (with corrected text if available)
+      await insertHistory(text, corrected, duration, 'zh', 'general')
+
+      // Send both results to renderer
+      mainWindow?.webContents.send('recognition-result', { text })
+      if (corrected) {
+        mainWindow?.webContents.send('corrected-text', { text: corrected })
+      }
+
+      // Auto-type the corrected text (or original if correction failed)
+      typeText(corrected || text)
     }
 
     hideSubtitle()
-    mainWindow?.webContents.send('recognition-result', { text })
     mainWindow?.webContents.send('recording-state', false)
   })
 
