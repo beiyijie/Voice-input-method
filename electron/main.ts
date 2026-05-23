@@ -1,6 +1,6 @@
 import { app, BrowserWindow, ipcMain, globalShortcut } from 'electron'
 import path from 'path'
-import { initDatabase, closeDatabase, getConfig, setConfig, getHistory, searchHistory, insertHistory, getWords } from './database'
+import { initDatabase, closeDatabase, getConfig, setConfig, getHistory, searchHistory, insertHistory, getWords, addWord, deleteWord } from './database'
 import { PythonBridge } from './python-bridge'
 import { typeText } from './auto-type'
 import { showSubtitle, hideSubtitle } from './subtitle-window'
@@ -112,6 +112,15 @@ app.whenReady().then(async () => {
   })
   ipcMain.handle('search-history', async (_event, keyword: string) => {
     return await searchHistory(keyword)
+  })
+  ipcMain.handle('get-words', async () => {
+    return await getWords()
+  })
+  ipcMain.handle('add-word', async (_event, word: string, weight?: number, category?: string) => {
+    await addWord(word, weight, category)
+  })
+  ipcMain.handle('delete-word', async (_event, id: number) => {
+    await deleteWord(id)
   })
 
   createWindow()
