@@ -3,12 +3,13 @@ import { getWords } from './database'
 const OLLAMA_HOST = 'http://127.0.0.1:11434'
 const MODEL = 'qwen2.5:7b'
 
-export async function correctText(text: string): Promise<string> {
+export async function correctText(text: string, systemPrompt?: string): Promise<string> {
   try {
     const words = await getWords()
     const hotwordList = words.map(w => w.word).join('、')
+    const basePrompt = systemPrompt || '你是一个语音识别纠错助手。请修正以下文本中的标点符号、大小写和专业术语，不要改变原意。'
 
-    const prompt = `你是一个语音识别纠错助手。请修正以下文本中的标点符号、大小写和专业术语，不要改变原意。${hotwordList ? `注意以下专业术语：${hotwordList}` : ''}
+    const prompt = `${basePrompt}${hotwordList ? `\n注意以下专业术语：${hotwordList}` : ''}
 
 原始文本：${text}
 纠错后：`

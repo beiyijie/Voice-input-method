@@ -121,7 +121,7 @@ export async function insertHistory(
 
 export async function getHistory(limit = 50, offset = 0): Promise<VoiceHistory[]> {
   if (!pool) throw new Error('Database not initialized')
-  const [rows] = await pool.execute<mysql.RowDataPacket[]>(
+  const [rows] = await pool.query<mysql.RowDataPacket[]>(
     'SELECT * FROM voice_history ORDER BY created_at DESC LIMIT ? OFFSET ?', [limit, offset]
   )
   return rows as VoiceHistory[]
@@ -129,7 +129,7 @@ export async function getHistory(limit = 50, offset = 0): Promise<VoiceHistory[]
 
 export async function searchHistory(keyword: string): Promise<VoiceHistory[]> {
   if (!pool) throw new Error('Database not initialized')
-  const [rows] = await pool.execute<mysql.RowDataPacket[]>(
+  const [rows] = await pool.query<mysql.RowDataPacket[]>(
     'SELECT * FROM voice_history WHERE voice_text LIKE ? OR optimized_text LIKE ? ORDER BY created_at DESC',
     [`%${keyword}%`, `%${keyword}%`]
   )

@@ -15,6 +15,7 @@ let recordingStartTime = 0
 let currentMode = 'general'
 let lastTypedText = ''
 let cachedUserWords: string[] = []
+let cachedLanguage = 'zh'
 /** generation-based approach: Tag each recording with a gen number.
  *  When final_result arrives with a gen that doesn't match the current
  *  recordingGen, it's stale and gets discarded. */
@@ -64,7 +65,7 @@ async function handleRecordingToggle() {
     recordingStartTime = Date.now()
     const mode = getModeConfig(currentMode)
     const hotwords = [...mode.defaultHotwords, ...cachedUserWords]
-    pythonBridge.send({ type: 'start_recording', language: 'zh', hotwords, gen: recordingGen })
+    pythonBridge.send({ type: 'start_recording', language: cachedLanguage, hotwords, gen: recordingGen })
     showSubtitle('')
     isRecording = true
     mainWindow.webContents.send('recording-state', true)
@@ -89,7 +90,8 @@ async function processResult(text: string, gen: number) {
   // AI correction
   let corrected: string | null = null
   try {
-    corrected = await correctText(text)
+    const mode = getModeConfig(currentMode)
+    corrected = await correctText(text, mode.correctionPrompt)
   } catch (err) {
     console.error('AI correction failed:', err)
   }
@@ -99,12 +101,12 @@ async function processResult(text: string, gen: number) {
   await typeText(finalText)
   lastTypedText = ''
 
-  // Save to history (don't block)
-  if (gen === recordingGen) {
-    insertHistory(text, corrected, duration, 'zh', currentMode).catch(() => {})
-  }
+  // Save to history
+  insertHistory(text, corrected, duration, cachedLanguage, currentMode).catch((err) =>
+    console.error('Save history failed:', err)
+  )
 
-  // Update UI if still relevant
+  // Update UI
   if (gen === recordingGen) {
     mainWindow.webContents.send('recognition-result', { text })
     if (corrected) {
@@ -140,13 +142,19 @@ app.whenReady().then(async () => {
     console.error(`Failed to register shortcut: ${shortcutKey}`)
   }
 
-  // Load user words cache
+  // Load user words cache & language
   try {
     const words = await getWords()
     cachedUserWords = words.map(w => w.word)
     console.log(`Loaded ${cachedUserWords.length} user words`)
   } catch (err) {
     console.error('Failed to load user words:', err)
+  }
+  try {
+    const lang = await getConfig('language')
+    if (lang) cachedLanguage = lang
+  } catch (err) {
+    console.error('Failed to load language:', err)
   }
 
   // Single final_result handler — uses gen to discard stale results
@@ -176,10 +184,11 @@ app.whenReady().then(async () => {
   })
   ipcMain.handle('set-config', async (_event, key: string, value: string) => {
     await setConfig(key, value)
-    // If shortcut key changed, re-register
     if (key === 'shortcut_key') {
       globalShortcut.unregisterAll()
       globalShortcut.register(value, handleRecordingToggle)
+    } else if (key === 'language') {
+      cachedLanguage = value
     }
   })
   ipcMain.handle('get-history', async (_event, limit?: number, offset?: number) => {
