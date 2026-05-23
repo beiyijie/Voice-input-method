@@ -14,6 +14,16 @@ let isRecording = false
 let recordingStartTime = 0
 let currentMode = 'general'
 let lastTypedText = ''
+let cachedUserWords: string[] = []
+/** generation-based approach: Tag each recording with a gen number.
+ *  When final_result arrives with a gen that doesn't match the current
+ *  recordingGen, it's stale and gets discarded. */
+let recordingGen = 0
+let processingQueue: Promise<void> = Promise.resolve()
+
+function enqueue(fn: () => Promise<void>) {
+  processingQueue = processingQueue.then(fn).catch(err => console.error('Processing error:', err))
+}
 
 function createWindow() {
   mainWindow = new BrowserWindow({
@@ -43,17 +53,65 @@ async function handleRecordingToggle() {
   if (!pythonBridge || !mainWindow) return
 
   if (isRecording) {
+    // Stop immediately — don't block on recognition/typing
     pythonBridge.stopRecording()
+    isRecording = false
+    mainWindow.webContents.send('recording-state', false)
+    hideSubtitle()
   } else {
+    recordingGen++
     lastTypedText = ''
     recordingStartTime = Date.now()
     const mode = getModeConfig(currentMode)
-    const userWords = await getWords()
-    const hotwords = [...mode.defaultHotwords, ...userWords.map(w => w.word)]
-    pythonBridge.startRecording('zh', hotwords)
+    const hotwords = [...mode.defaultHotwords, ...cachedUserWords]
+    pythonBridge.send({ type: 'start_recording', language: 'zh', hotwords, gen: recordingGen })
     showSubtitle('')
     isRecording = true
     mainWindow.webContents.send('recording-state', true)
+  }
+}
+
+async function processResult(text: string, gen: number) {
+  if (!text.trim() || !mainWindow) return
+
+  const duration = Math.floor((Date.now() - recordingStartTime) / 1000)
+
+  // Check for voice commands first
+  const parsed = parseCommand(text)
+  if (parsed) {
+    await parsed.command.execute(parsed.params)
+    mainWindow.webContents.send('recognition-result', { text: `🎯 执行命令: ${text}` })
+    hideSubtitle()
+    mainWindow.webContents.send('recording-state', false)
+    return
+  }
+
+  // AI correction
+  let corrected: string | null = null
+  try {
+    corrected = await correctText(text)
+  } catch (err) {
+    console.error('AI correction failed:', err)
+  }
+
+  // Type final text via clipboard paste
+  const finalText = corrected || text
+  await typeText(finalText)
+  lastTypedText = ''
+
+  // Save to history (don't block)
+  if (gen === recordingGen) {
+    insertHistory(text, corrected, duration, 'zh', currentMode).catch(() => {})
+  }
+
+  // Update UI if still relevant
+  if (gen === recordingGen) {
+    mainWindow.webContents.send('recognition-result', { text })
+    if (corrected) {
+      mainWindow.webContents.send('corrected-text', { text: corrected })
+    }
+    hideSubtitle()
+    mainWindow.webContents.send('recording-state', false)
   }
 }
 
@@ -82,48 +140,26 @@ app.whenReady().then(async () => {
     console.error(`Failed to register shortcut: ${shortcutKey}`)
   }
 
-  // Handle Python events
-  pythonBridge.on('final_result', async (msg) => {
-    isRecording = false
-    const duration = Math.floor((Date.now() - recordingStartTime) / 1000)
+  // Load user words cache
+  try {
+    const words = await getWords()
+    cachedUserWords = words.map(w => w.word)
+    console.log(`Loaded ${cachedUserWords.length} user words`)
+  } catch (err) {
+    console.error('Failed to load user words:', err)
+  }
+
+  // Single final_result handler — uses gen to discard stale results
+  pythonBridge.on('final_result', (msg) => {
+    const resultGen = (msg as any).gen || 0
+    if (resultGen !== recordingGen) return // Stale result from previous recording
     const text = msg.text || ''
-
     if (text.trim()) {
-      // Check for voice commands first
-      const parsed = parseCommand(text)
-      if (parsed) {
-        await parsed.command.execute(parsed.params)
-        mainWindow?.webContents.send('recognition-result', { text: `🎯 执行命令: ${text}` })
-        hideSubtitle()
-        mainWindow?.webContents.send('recording-state', false)
-        return
-      }
-
-      // AI correction
-      let corrected: string | null = null
-      try {
-        corrected = await correctText(text)
-      } catch (err) {
-        console.error('AI correction failed:', err)
-      }
-
-      // Type final text into the target app via clipboard paste
-      const finalText = corrected || text
-      await typeText(finalText)
-      lastTypedText = ''
-
-      // Save to history
-      await insertHistory(text, corrected, duration, 'zh', currentMode)
-
-      // Send results to renderer
-      mainWindow?.webContents.send('recognition-result', { text })
-      if (corrected) {
-        mainWindow?.webContents.send('corrected-text', { text: corrected })
-      }
+      enqueue(() => processResult(text, resultGen))
+    } else {
+      hideSubtitle()
+      mainWindow?.webContents.send('recording-state', false)
     }
-
-    hideSubtitle()
-    mainWindow?.webContents.send('recording-state', false)
   })
 
   pythonBridge.on('partial_result', (msg) => {
@@ -157,9 +193,13 @@ app.whenReady().then(async () => {
   })
   ipcMain.handle('add-word', async (_event, word: string, weight?: number, category?: string) => {
     await addWord(word, weight, category)
+    const words = await getWords()
+    cachedUserWords = words.map(w => w.word)
   })
   ipcMain.handle('delete-word', async (_event, id: number) => {
     await deleteWord(id)
+    const words = await getWords()
+    cachedUserWords = words.map(w => w.word)
   })
   ipcMain.handle('set-mode', async (_event, modeId: string) => {
     currentMode = modeId

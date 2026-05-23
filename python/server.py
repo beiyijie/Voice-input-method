@@ -7,7 +7,7 @@ import numpy as np
 import sounddevice as sd
 import websockets
 
-from recognizer import recognize
+from recognizer import recognize, prewarm
 from vad import VAD
 
 SAMPLE_RATE = 16000
@@ -17,9 +17,10 @@ WS_PORT = 9877
 _recording = False
 _audio_buffer: list[bytes] = []
 _recording_task: asyncio.Task | None = None
+_current_gen = 0
 
 
-async def run_recording(websocket, hotwords: list[str], vad: VAD):
+async def run_recording(websocket, hotwords: list[str], vad: VAD, gen: int = 0):
     """Run the recording loop in a separate task."""
     global _recording, _audio_buffer
 
@@ -51,7 +52,7 @@ async def run_recording(websocket, hotwords: list[str], vad: VAD):
     with stream:
         last_partial_time = time.time()
         while _recording:
-            await asyncio.sleep(0.1)
+            await asyncio.sleep(0.05)
 
             # VAD check on the latest chunk
             if len(_audio_buffer) > 0:
@@ -77,7 +78,7 @@ async def run_recording(websocket, hotwords: list[str], vad: VAD):
     if _audio_buffer:
         all_audio = b"".join(_audio_buffer)
         text = await loop.run_in_executor(None, recognize, all_audio, hotwords)
-        await send_msg({"type": "final_result", "text": text})
+        await send_msg({"type": "final_result", "text": text, "gen": gen})
 
 
 async def handle_client(websocket):
@@ -99,9 +100,10 @@ async def handle_client(websocket):
                 _recording_task.cancel()
                 _recording_task = None
 
+            _current_gen = msg.get("gen", 0)
             vad = VAD()
             _recording_task = asyncio.create_task(
-                run_recording(websocket, hotwords, vad)
+                run_recording(websocket, hotwords, vad, _current_gen)
             )
 
         elif msg_type == "stop_recording":
@@ -119,6 +121,8 @@ async def handle_client(websocket):
 
 
 async def main():
+    # Pre-warm the FunASR model so first recording is instant
+    prewarm()
     print(f"Starting voice recognition server on ws://127.0.0.1:{WS_PORT}", flush=True)
     async with websockets.serve(handle_client, "127.0.0.1", WS_PORT):
         await asyncio.Future()
