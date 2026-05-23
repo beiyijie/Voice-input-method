@@ -12,10 +12,17 @@ function Settings({ onBack }: { onBack: () => void }) {
   const [words, setWords] = useState<Word[]>([])
   const [newWord, setNewWord] = useState('')
   const [category, setCategory] = useState('')
+  const [currentMode, setCurrentMode] = useState('general')
 
   useEffect(() => {
     loadWords()
+    window.electronAPI.getMode().then(m => setCurrentMode(m || 'general'))
   }, [])
+
+  async function handleModeChange(modeId: string) {
+    setCurrentMode(modeId)
+    await window.electronAPI.setMode(modeId)
+  }
 
   async function loadWords() {
     const list = await window.electronAPI.getWords()
@@ -41,6 +48,30 @@ function Settings({ onBack }: { onBack: () => void }) {
           <ArrowLeft size={24} />
         </button>
         <h2 style={{ margin: 0, fontSize: 20 }}>设置 - 热词管理</h2>
+      </div>
+
+      <div style={{ marginBottom: 24 }}>
+        <h3 style={{ fontSize: 15, marginBottom: 8, opacity: 0.8 }}>输入模式</h3>
+        <div style={{ display: 'flex', gap: 8 }}>
+          {[
+            { id: 'general', label: '通用模式' },
+            { id: 'office', label: '办公模式' },
+            { id: 'programmer', label: '程序员模式' },
+          ].map((mode) => (
+            <button
+              key={mode.id}
+              onClick={() => handleModeChange(mode.id)}
+              style={{
+                flex: 1, padding: '10px', borderRadius: 8, border: 'none', cursor: 'pointer',
+                background: currentMode === mode.id ? 'rgba(255,255,255,0.25)' : 'rgba(255,255,255,0.08)',
+                color: '#fff', fontSize: 13, fontWeight: currentMode === mode.id ? 600 : 400,
+                transition: 'all 0.2s',
+              }}
+            >
+              {mode.label}
+            </button>
+          ))}
+        </div>
       </div>
 
       <div style={{ marginBottom: 24, display: 'flex', gap: 8 }}>

@@ -12,6 +12,8 @@ interface ElectronAPI {
   getWords: () => Promise<Array<{ id: number; word: string; weight: number; category: string }>>
   addWord: (word: string, weight?: number, category?: string) => Promise<void>
   deleteWord: (id: number) => Promise<void>
+  getMode: () => Promise<string>
+  setMode: (modeId: string) => Promise<void>
 }
 
 interface Window {

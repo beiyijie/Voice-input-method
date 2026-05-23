@@ -8,10 +8,15 @@ function App() {
   const [recording, setRecording] = useState(false)
   const [lastText, setLastText] = useState('')
   const [page, setPage] = useState<'home' | 'settings' | 'history'>('home')
+  const [currentMode, setCurrentMode] = useState('通用模式')
 
   useEffect(() => {
     window.electronAPI.onRecordingState((state) => setRecording(state))
     window.electronAPI.onRecognitionResult((result) => setLastText(result.text))
+    window.electronAPI.getMode().then(modeId => {
+      const modeNames: Record<string, string> = { general: '通用模式', office: '办公模式', programmer: '程序员模式' }
+      setCurrentMode(modeNames[modeId] || '通用模式')
+    })
   }, [])
 
   if (page === 'history') {
@@ -25,6 +30,7 @@ function App() {
   return (
     <div className="container">
       <h1 className="title">AI 智能语音输入助手</h1>
+      <div style={{ fontSize: 13, opacity: 0.7, marginBottom: 4 }}>{currentMode}</div>
 
       <div className={`status-icon ${recording ? 'recording' : 'idle'}`}>
         {recording ? <Square size={32} color="#ff4444" /> : <Mic size={32} />}

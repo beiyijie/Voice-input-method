@@ -20,4 +20,6 @@ contextBridge.exposeInMainWorld('electronAPI', {
   getWords: () => ipcRenderer.invoke('get-words'),
   addWord: (word: string, weight?: number, category?: string) => ipcRenderer.invoke('add-word', word, weight, category),
   deleteWord: (id: number) => ipcRenderer.invoke('delete-word', id),
+  getMode: () => ipcRenderer.invoke('get-mode'),
+  setMode: (modeId: string) => ipcRenderer.invoke('set-mode', modeId),
 })

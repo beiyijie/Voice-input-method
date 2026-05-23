@@ -4,12 +4,14 @@ import { initDatabase, closeDatabase, getConfig, setConfig, getHistory, searchHi
 import { PythonBridge } from './python-bridge'
 import { typeText } from './auto-type'
 import { correctText } from './ollama'
+import { getModeConfig } from './modes'
 import { showSubtitle, hideSubtitle } from './subtitle-window'
 
 let mainWindow: BrowserWindow | null = null
 let pythonBridge: PythonBridge | null = null
 let isRecording = false
 let recordingStartTime = 0
+let currentMode = 'general'
 
 function createWindow() {
   mainWindow = new BrowserWindow({
@@ -42,8 +44,9 @@ async function handleRecordingToggle() {
     pythonBridge.stopRecording()
   } else {
     recordingStartTime = Date.now()
-    const words = await getWords()
-    const hotwords = words.map(w => w.word)
+    const mode = getModeConfig(currentMode)
+    const userWords = await getWords()
+    const hotwords = [...mode.defaultHotwords, ...userWords.map(w => w.word)]
     pythonBridge.startRecording('zh', hotwords)
     showSubtitle('')
     isRecording = true
@@ -92,7 +95,7 @@ app.whenReady().then(async () => {
       }
 
       // Save to history (with corrected text if available)
-      await insertHistory(text, corrected, duration, 'zh', 'general')
+      await insertHistory(text, corrected, duration, 'zh', currentMode)
 
       // Send both results to renderer
       mainWindow?.webContents.send('recognition-result', { text })
@@ -137,6 +140,21 @@ app.whenReady().then(async () => {
   })
   ipcMain.handle('delete-word', async (_event, id: number) => {
     await deleteWord(id)
+  })
+  ipcMain.handle('set-mode', async (_event, modeId: string) => {
+    currentMode = modeId
+    await setConfig('mode', modeId)
+    // Update hotwords in Python bridge
+    const mode = getModeConfig(modeId)
+    const allWords = [...mode.defaultHotwords]
+    const userWords = await getWords()
+    const userWordTexts = userWords.map(w => w.word)
+    allWords.push(...userWordTexts)
+    pythonBridge?.updateHotwords(allWords)
+  })
+  ipcMain.handle('get-mode', async () => {
+    const saved = await getConfig('mode')
+    return saved || 'general'
   })
 
   createWindow()
