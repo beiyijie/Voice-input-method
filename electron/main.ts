@@ -2,7 +2,7 @@ import { app, BrowserWindow, ipcMain, globalShortcut } from 'electron'
 import path from 'path'
 import { initDatabase, closeDatabase, getConfig, setConfig, getHistory, searchHistory, insertHistory, getWords, addWord, deleteWord } from './database'
 import { PythonBridge } from './python-bridge'
-import { typeText } from './auto-type'
+import { typeText, replaceText } from './auto-type'
 import { correctText } from './ollama'
 import { parseCommand } from './commands'
 import { getModeConfig } from './modes'
@@ -16,6 +16,7 @@ let currentMode = 'general'
 let lastTypedText = ''
 let cachedUserWords: string[] = []
 let cachedLanguage = 'zh'
+let cachedAiCorrect = true
 /** generation-based approach: Tag each recording with a gen number.
  *  When final_result arrives with a gen that doesn't match the current
  *  recordingGen, it's stale and gets discarded. */
@@ -87,13 +88,15 @@ async function processResult(text: string, gen: number) {
     return
   }
 
-  // AI correction
+  // AI correction (only if enabled)
   let corrected: string | null = null
-  try {
-    const mode = getModeConfig(currentMode)
-    corrected = await correctText(text, mode.correctionPrompt)
-  } catch (err) {
-    console.error('AI correction failed:', err)
+  if (cachedAiCorrect) {
+    try {
+      const mode = getModeConfig(currentMode)
+      corrected = await correctText(text, mode.correctionPrompt)
+    } catch (err) {
+      console.error('AI correction failed:', err)
+    }
   }
 
   // Type final text via clipboard paste
@@ -156,6 +159,12 @@ app.whenReady().then(async () => {
   } catch (err) {
     console.error('Failed to load language:', err)
   }
+  try {
+    const ai = await getConfig('ai_correct')
+    if (ai !== null) cachedAiCorrect = ai === 'true'
+  } catch (err) {
+    console.error('Failed to load ai_correct:', err)
+  }
 
   // Single final_result handler — uses gen to discard stale results
   pythonBridge.on('final_result', (msg) => {
@@ -171,7 +180,12 @@ app.whenReady().then(async () => {
   })
 
   pythonBridge.on('partial_result', (msg) => {
-    showSubtitle(msg.text || '')
+    const partialText = msg.text || ''
+    showSubtitle(partialText)
+    // When AI correction is off, stream partial results into the target app in real-time
+    if (!cachedAiCorrect && partialText.trim()) {
+      replaceText(partialText).catch(() => {})
+    }
   })
 
   // IPC handlers
@@ -189,6 +203,8 @@ app.whenReady().then(async () => {
       globalShortcut.register(value, handleRecordingToggle)
     } else if (key === 'language') {
       cachedLanguage = value
+    } else if (key === 'ai_correct') {
+      cachedAiCorrect = value === 'true'
     }
   })
   ipcMain.handle('get-history', async (_event, limit?: number, offset?: number) => {

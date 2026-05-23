@@ -10,3 +10,4 @@ release/
 .env.*.local
 Thumbs.db
 .DS_Store
+__pycache__/

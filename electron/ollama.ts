@@ -16,6 +16,7 @@ export async function correctText(text: string, systemPrompt?: string): Promise<
 
     const response = await fetch(`${OLLAMA_HOST}/api/generate`, {
       method: 'POST',
+      signal: AbortSignal.timeout(10000),
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         model: MODEL,
