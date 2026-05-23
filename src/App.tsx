@@ -30,7 +30,7 @@ function App() {
   return (
     <div className="container">
       <h1 className="title">AI 智能语音输入助手</h1>
-      <div style={{ fontSize: 13, opacity: 0.7, marginBottom: 4 }}>{currentMode}</div>
+      <div className="mode-label">{currentMode}</div>
 
       <div className={`status-icon ${recording ? 'recording' : 'idle'}`}>
         {recording ? <Square size={32} color="#ff4444" /> : <Mic size={32} />}

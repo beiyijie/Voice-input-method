@@ -14,6 +14,32 @@ body {
   user-select: none;
 }
 
+/* Custom scrollbar */
+::-webkit-scrollbar {
+  width: 4px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.2);
+  border-radius: 2px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.35);
+}
+
+/* Focus visible style for accessibility */
+:focus-visible {
+  outline: 2px solid rgba(255, 255, 255, 0.6);
+  outline-offset: 2px;
+}
+
+/* Remove default focus style for mouse users */
+:focus:not(:focus-visible) {
+  outline: none;
+}
+
 .container {
   display: flex;
   flex-direction: column;
@@ -87,6 +113,18 @@ body {
   width: 100%;
   max-width: 520px;
   backdrop-filter: blur(10px);
+  animation: resultFadeIn 0.3s ease-out;
+}
+
+@keyframes resultFadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 .result-box p {
@@ -118,18 +156,32 @@ body {
   flex-direction: column;
   align-items: center;
   gap: 4px;
-  transition: color 0.2s;
+  transition: all 0.2s ease;
+  padding: 8px 12px;
+  border-radius: 8px;
 }
 
 .nav-btn:hover {
   color: #fff;
+  background: rgba(255, 255, 255, 0.08);
 }
 
 .nav-btn:active {
   opacity: 0.7;
+  transform: scale(0.95);
 }
 
 .nav-btn svg {
   width: 20px;
   height: 20px;
+}
+
+/* Mode label on home page */
+.mode-label {
+  font-size: 13px;
+  opacity: 0.7;
+  margin-bottom: 4px;
+  padding: 2px 10px;
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.08);
 }

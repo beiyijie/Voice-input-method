@@ -1,13 +1,36 @@
 appId: com.voiceinput.assistant
 productName: 语音输入助手
+copyright: Copyright © 2024
 directories:
   output: release
+  buildResources: resources
 files:
   - dist
   - dist-electron
+extraResources:
+  - from: python
+    to: python
+    filter:
+      - "**/*"
+      - "!__pycache__"
+      - "!*.pyc"
+asar: true
+asarUnpack:
+  - "**/*.node"
 win:
-  target: nsis
+  target:
+    - target: nsis
+      arch:
+        - x64
   icon: resources/icon.png
 nsis:
   oneClick: false
   allowToChangeInstallationDirectory: true
+  createDesktopShortcut: true
+  createStartMenuShortcut: true
+  shortcutName: 语音输入助手
+  installerIcon: resources/icon.png
+  uninstallerIcon: resources/icon.png
+  installerHeaderIcon: resources/icon.png
+  deleteAppDataOnUninstall: false
+  displayLanguageSelector: false
