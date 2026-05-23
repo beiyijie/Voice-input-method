@@ -1,8 +1,12 @@
-import { app, BrowserWindow, ipcMain } from 'electron'
+import { app, BrowserWindow, ipcMain, globalShortcut } from 'electron'
 import path from 'path'
-import { initDatabase, closeDatabase, getConfig, setConfig, getHistory, searchHistory } from './database'
+import { initDatabase, closeDatabase, getConfig, setConfig, getHistory, searchHistory, insertHistory, getWords } from './database'
+import { PythonBridge } from './python-bridge'
 
 let mainWindow: BrowserWindow | null = null
+let pythonBridge: PythonBridge | null = null
+let isRecording = false
+let recordingStartTime = 0
 
 function createWindow() {
   mainWindow = new BrowserWindow({
@@ -28,6 +32,21 @@ function createWindow() {
   })
 }
 
+async function handleRecordingToggle() {
+  if (!pythonBridge || !mainWindow) return
+
+  if (isRecording) {
+    pythonBridge.stopRecording()
+  } else {
+    recordingStartTime = Date.now()
+    const words = await getWords()
+    const hotwords = words.map(w => w.word)
+    pythonBridge.startRecording('zh', hotwords)
+    isRecording = true
+    mainWindow.webContents.send('recording-state', true)
+  }
+}
+
 app.whenReady().then(async () => {
   // Initialize database
   try {
@@ -36,6 +55,36 @@ app.whenReady().then(async () => {
   } catch (err) {
     console.error('Database init failed:', err)
   }
+
+  // Start Python bridge
+  pythonBridge = new PythonBridge()
+  try {
+    await pythonBridge.start()
+    console.log('Python bridge ready')
+  } catch (err) {
+    console.error('Python bridge failed:', err)
+  }
+
+  // Register global shortcut
+  const shortcutKey = 'Ctrl+Space'
+  const registered = globalShortcut.register(shortcutKey, handleRecordingToggle)
+  if (!registered) {
+    console.error(`Failed to register shortcut: ${shortcutKey}`)
+  }
+
+  // Handle Python events
+  pythonBridge.on('final_result', async (msg) => {
+    isRecording = false
+    const duration = Math.floor((Date.now() - recordingStartTime) / 1000)
+    const text = msg.text || ''
+
+    if (text.trim()) {
+      await insertHistory(text, null, duration, 'zh', 'general')
+    }
+
+    mainWindow?.webContents.send('recognition-result', { text })
+    mainWindow?.webContents.send('recording-state', false)
+  })
 
   // IPC handlers
   ipcMain.handle('get-config', async (_event, key: string) => {
@@ -59,6 +108,7 @@ app.whenReady().then(async () => {
 })
 
 app.on('window-all-closed', async () => {
+  await pythonBridge?.shutdown()
   await closeDatabase()
   if (process.platform !== 'darwin') {
     app.quit()

@@ -5,4 +5,10 @@ contextBridge.exposeInMainWorld('electronAPI', {
   setConfig: (key: string, value: string) => ipcRenderer.invoke('set-config', key, value),
   getHistory: (limit?: number, offset?: number) => ipcRenderer.invoke('get-history', limit, offset),
   searchHistory: (keyword: string) => ipcRenderer.invoke('search-history', keyword),
+  onRecordingState: (callback: (recording: boolean) => void) => {
+    ipcRenderer.on('recording-state', (_event, state) => callback(state))
+  },
+  onRecognitionResult: (callback: (result: { text: string }) => void) => {
+    ipcRenderer.on('recognition-result', (_event, result) => callback(result))
+  },
 })
