@@ -1,17 +1,22 @@
 import { useEffect, useState } from 'react'
 import { Mic, Square, History, Settings as SettingsIcon } from 'lucide-react'
 import SettingsPage from './pages/Settings'
+import HistoryPage from './pages/History'
 import './App.css'
 
 function App() {
   const [recording, setRecording] = useState(false)
   const [lastText, setLastText] = useState('')
-  const [page, setPage] = useState<'home' | 'settings'>('home')
+  const [page, setPage] = useState<'home' | 'settings' | 'history'>('home')
 
   useEffect(() => {
     window.electronAPI.onRecordingState((state) => setRecording(state))
     window.electronAPI.onRecognitionResult((result) => setLastText(result.text))
   }, [])
+
+  if (page === 'history') {
+    return <HistoryPage onBack={() => setPage('home')} />
+  }
 
   if (page === 'settings') {
     return <SettingsPage onBack={() => setPage('home')} />
@@ -43,7 +48,7 @@ function App() {
           <Mic />
           <span>首页</span>
         </button>
-        <button className="nav-btn" onClick={() => {}}>
+        <button className="nav-btn" onClick={() => setPage('history')}>
           <History />
           <span>历史</span>
         </button>
