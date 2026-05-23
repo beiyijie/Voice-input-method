@@ -2,6 +2,7 @@ import { app, BrowserWindow, ipcMain, globalShortcut } from 'electron'
 import path from 'path'
 import { initDatabase, closeDatabase, getConfig, setConfig, getHistory, searchHistory, insertHistory, getWords } from './database'
 import { PythonBridge } from './python-bridge'
+import { typeText } from './auto-type'
 
 let mainWindow: BrowserWindow | null = null
 let pythonBridge: PythonBridge | null = null
@@ -80,6 +81,8 @@ app.whenReady().then(async () => {
 
     if (text.trim()) {
       await insertHistory(text, null, duration, 'zh', 'general')
+      // Auto-type the recognized text into the currently focused window
+      typeText(text)
     }
 
     mainWindow?.webContents.send('recognition-result', { text })
