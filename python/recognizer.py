@@ -13,7 +13,7 @@ MODEL_MAP = {
         "disable_update": True,
     },
     "en": {
-        "model": "paraformer-en",
+        "model": "iic/speech_paraformer-large-vad-punc_asr_nat-en-16k-common-vocab10020",
         "disable_update": True,
     },
     "yue": {

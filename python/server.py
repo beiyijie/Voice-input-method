@@ -75,7 +75,11 @@ async def run_recording(websocket, hotwords: list[str], language: str, vad: VAD,
                 last_partial_time = now
                 new_audio = b"".join(_audio_buffer[last_recognized_idx:])
                 last_recognized_idx = buf_len
-                new_text = await loop.run_in_executor(None, recognize, new_audio, hotwords, language)
+                try:
+                    new_text = await loop.run_in_executor(None, recognize, new_audio, hotwords, language)
+                except Exception as e:
+                    print(f"[Recognize] partial recognition error: {e}", flush=True)
+                    new_text = ""
                 if new_text:
                     partial_text += new_text
                     await send_msg({"type": "partial_result", "text": partial_text})
@@ -83,7 +87,11 @@ async def run_recording(websocket, hotwords: list[str], language: str, vad: VAD,
     # Final recognition on full audio (runs after recording stops)
     if _audio_buffer:
         all_audio = b"".join(_audio_buffer)
-        text = await loop.run_in_executor(None, recognize, all_audio, hotwords, language)
+        try:
+            text = await loop.run_in_executor(None, recognize, all_audio, hotwords, language)
+        except Exception as e:
+            print(f"[Recognize] final recognition error: {e}", flush=True)
+            text = ""
         await send_msg({"type": "final_result", "text": text, "gen": gen})
 
 
