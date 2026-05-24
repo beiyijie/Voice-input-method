@@ -3,7 +3,7 @@ import numpy as np
 
 
 class VAD:
-    def __init__(self, sample_rate: int = 16000, silence_threshold: float = 0.01, silence_duration: float = 1.0):
+    def __init__(self, sample_rate: int = 16000, silence_threshold: float = 0.008, silence_duration: float = 1.5):
         self.sample_rate = sample_rate
         self.silence_threshold = silence_threshold
         self.silence_samples = int(silence_duration * sample_rate)

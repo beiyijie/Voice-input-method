@@ -20,13 +20,14 @@ _recording_task: asyncio.Task | None = None
 _current_gen = 0
 
 
-async def run_recording(websocket, hotwords: list[str], vad: VAD, gen: int = 0):
+async def run_recording(websocket, hotwords: list[str], language: str, vad: VAD, gen: int = 0):
     """Run the recording loop in a separate task."""
     global _recording, _audio_buffer
 
     _recording = True
     _audio_buffer = []
     last_recognized_idx = 0
+    last_vad_idx = 0
     partial_text = ""
     vad.reset()
 
@@ -54,12 +55,17 @@ async def run_recording(websocket, hotwords: list[str], vad: VAD, gen: int = 0):
         while _recording:
             await asyncio.sleep(0.05)
 
-            # VAD check on the latest chunk
-            if len(_audio_buffer) > 0:
-                chunk = np.frombuffer(_audio_buffer[-1], dtype=np.int16)
-                should_stop = vad.process(chunk.astype(np.float32) / 32768.0)
-                if should_stop:
-                    _recording = False
+            # VAD check on new chunks only (avoid double-counting same chunk)
+            buf_len = len(_audio_buffer)
+            if buf_len > last_vad_idx:
+                for i in range(last_vad_idx, buf_len):
+                    chunk = np.frombuffer(_audio_buffer[i], dtype=np.int16)
+                    should_stop = vad.process(chunk.astype(np.float32) / 32768.0)
+                    if should_stop:
+                        _recording = False
+                        break
+                last_vad_idx = buf_len
+                if not _recording:
                     break
 
             # Every ~0.8s, send incremental recognition result
@@ -69,7 +75,7 @@ async def run_recording(websocket, hotwords: list[str], vad: VAD, gen: int = 0):
                 last_partial_time = now
                 new_audio = b"".join(_audio_buffer[last_recognized_idx:])
                 last_recognized_idx = buf_len
-                new_text = await loop.run_in_executor(None, recognize, new_audio, hotwords)
+                new_text = await loop.run_in_executor(None, recognize, new_audio, hotwords, language)
                 if new_text:
                     partial_text += new_text
                     await send_msg({"type": "partial_result", "text": partial_text})
@@ -77,7 +83,7 @@ async def run_recording(websocket, hotwords: list[str], vad: VAD, gen: int = 0):
     # Final recognition on full audio (runs after recording stops)
     if _audio_buffer:
         all_audio = b"".join(_audio_buffer)
-        text = await loop.run_in_executor(None, recognize, all_audio, hotwords)
+        text = await loop.run_in_executor(None, recognize, all_audio, hotwords, language)
         await send_msg({"type": "final_result", "text": text, "gen": gen})
 
 
@@ -93,6 +99,7 @@ async def handle_client(websocket):
         msg = json.loads(raw_msg)
         msg_type = msg.get("type")
         hotwords: list[str] = msg.get("hotwords", [])
+        language: str = msg.get("language", "zh")
 
         if msg_type == "start_recording":
             if _recording_task is not None and not _recording_task.done():
@@ -103,12 +110,12 @@ async def handle_client(websocket):
             _current_gen = msg.get("gen", 0)
             vad = VAD()
             _recording_task = asyncio.create_task(
-                run_recording(websocket, hotwords, vad, _current_gen)
+                run_recording(websocket, hotwords, language, vad, _current_gen)
             )
 
         elif msg_type == "stop_recording":
             _recording = False
-            _recording_task = None  # Don't await - let final result arrive later
+            _recording_task = None
             await send({"type": "recording_stopped"})
 
         elif msg_type == "shutdown":
@@ -120,9 +127,17 @@ async def handle_client(websocket):
             break
 
 
+async def _warmup_models():
+    """Background task: pre-warm all language models."""
+    loop = asyncio.get_event_loop()
+    print("Pre-warming models in background...", flush=True)
+    await loop.run_in_executor(None, prewarm, ["zh", "en", "yue"])
+    print("All models ready", flush=True)
+
+
 async def main():
-    # Pre-warm the FunASR model so first recording is instant
-    prewarm()
+    # Start server immediately so bridge can connect (models warm up in background)
+    print(f"Starting voice recognition server on ws://127.0.0.1:{WS_PORT}", flush=True)
     # Pre-warm audio device (Windows audio subsystem cold start is slow)
     try:
         stream = sd.InputStream(samplerate=SAMPLE_RATE, channels=CHANNELS, dtype="int16", blocksize=1600)
@@ -131,7 +146,8 @@ async def main():
         print("Audio device ready", flush=True)
     except Exception as e:
         print(f"Audio device warm-up skipped: {e}", flush=True)
-    print(f"Starting voice recognition server on ws://127.0.0.1:{WS_PORT}", flush=True)
+    # Pre-warm models in background so bridge can connect immediately
+    asyncio.create_task(_warmup_models())
     async with websockets.serve(handle_client, "127.0.0.1", WS_PORT):
         await asyncio.Future()
 
