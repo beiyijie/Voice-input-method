@@ -17,6 +17,12 @@
   <img src="https://img.shields.io/badge/license-MIT-green" alt="License">
 </p>
 
+<p align="center">
+  <a href="https://www.bilibili.com/video/BV1fPG762ExA/" target="_blank">
+    <strong><code>▶ 项目演示视频（B站）</code></strong>
+  </a>
+</p>
+
 ---
 
 ## 目录
