@@ -54,6 +54,11 @@ function createWindow() {
 async function handleRecordingToggle() {
   if (!pythonBridge || !mainWindow) return
 
+  if (!pythonBridge.isReady()) {
+    console.warn('Python bridge not ready, cannot toggle recording')
+    return
+  }
+
   if (isRecording) {
     // Stop immediately — don't block on recognition/typing
     pythonBridge.stopRecording()
@@ -143,7 +148,9 @@ app.whenReady().then(async () => {
     const savedKey = await getConfig('shortcut_key')
     const shortcutKey = savedKey || 'Alt+V'
     const registered = globalShortcut.register(shortcutKey, handleRecordingToggle)
-    if (!registered) {
+    if (registered) {
+      console.log(`Shortcut registered: ${shortcutKey}`)
+    } else {
       console.error(`Failed to register shortcut: ${shortcutKey}`)
     }
   } catch (err) {

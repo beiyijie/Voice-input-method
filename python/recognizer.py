@@ -27,6 +27,9 @@ def prewarm():
         # Run a tiny dummy input to trigger model initialization
         dummy = np.zeros(16000, dtype=np.float32)  # 1 second of silence
         model.generate(input=dummy)
+        # Run a second pass with different size to trigger CUDA kernel compilation
+        dummy2 = np.zeros(24000, dtype=np.float32)  # 1.5 seconds (different size)
+        model.generate(input=dummy2, hotwords=["test"])
         _warmed = True
         print("FunASR model ready", flush=True)
 

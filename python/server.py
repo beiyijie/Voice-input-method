@@ -123,6 +123,14 @@ async def handle_client(websocket):
 async def main():
     # Pre-warm the FunASR model so first recording is instant
     prewarm()
+    # Pre-warm audio device (Windows audio subsystem cold start is slow)
+    try:
+        stream = sd.InputStream(samplerate=SAMPLE_RATE, channels=CHANNELS, dtype="int16", blocksize=1600)
+        with stream:
+            pass
+        print("Audio device ready", flush=True)
+    except Exception as e:
+        print(f"Audio device warm-up skipped: {e}", flush=True)
     print(f"Starting voice recognition server on ws://127.0.0.1:{WS_PORT}", flush=True)
     async with websockets.serve(handle_client, "127.0.0.1", WS_PORT):
         await asyncio.Future()

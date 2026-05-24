@@ -1,5 +1,6 @@
-import { spawn, ChildProcess } from 'child_process'
+import { spawn, execSync, ChildProcess } from 'child_process'
 import path from 'path'
+import net from 'net'
 import WebSocket from 'ws'
 
 type MessageHandler = (msg: any) => void
@@ -13,10 +14,35 @@ export class PythonBridge {
   private maxRestarts = 3
   private shouldRestart = true
 
+  private isPortInUse(port: number): Promise<boolean> {
+    return new Promise((resolve) => {
+      const server = net.createServer()
+      server.once('error', () => resolve(true))
+      server.once('listening', () => {
+        server.close()
+        resolve(false)
+      })
+      server.listen(port, '127.0.0.1')
+    })
+  }
+
   async start(): Promise<void> {
     const pythonPath = process.env.PYTHON_PATH || 'python'
     const scriptPath = path.resolve(__dirname, '../python/server.py')
     console.log('[Bridge] Starting Python:', scriptPath)
+
+    // Kill any leftover Python server on our port first
+    const inUse = await this.isPortInUse(9877)
+    if (inUse) {
+      console.log('[Bridge] Port 9877 in use, killing old Python server...')
+      try {
+        execSync('taskkill /f /im python.exe 2>nul || true', { timeout: 3000 })
+        // Wait for port to be released
+        await new Promise((r) => setTimeout(r, 1500))
+      } catch {
+        // Ignore kill errors
+      }
+    }
 
     this.process = spawn(pythonPath, [scriptPath], {
       stdio: ['pipe', 'pipe', 'pipe'],
@@ -134,6 +160,8 @@ export class PythonBridge {
   send(msg: Record<string, any>): void {
     if (this.ws && this.ws.readyState === WebSocket.OPEN) {
       this.ws.send(JSON.stringify(msg))
+    } else {
+      console.warn('[Bridge] Cannot send, WebSocket not connected:', msg.type)
     }
   }
 
@@ -147,6 +175,10 @@ export class PythonBridge {
 
   updateHotwords(hotwords: string[]): void {
     this.send({ type: 'update_hotwords', hotwords })
+  }
+
+  isReady(): boolean {
+    return this.ready && this.ws !== null && this.ws.readyState === WebSocket.OPEN
   }
 
   async shutdown(): Promise<void> {
